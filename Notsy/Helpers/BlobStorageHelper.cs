@@ -9,20 +9,22 @@ namespace Notsy.Helpers
         private readonly BlobContainerClient _containerClient;
         private readonly string _endpoint;
 
-        public BlobStorageHelper(string accountName, string containerName)
+
+        public BlobStorageHelper(string accountName, string containerName, string clientId)
         {
+            var managedIdentityCredential = new ManagedIdentityCredential(clientId);
             _endpoint = $"https://{accountName}.blob.core.windows.net/{containerName}";
             _containerClient = new BlobContainerClient(
                 new Uri(_endpoint),
-                new DefaultAzureCredential()
+                managedIdentityCredential
             );
         }
 
-        public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType)
+        public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType, CancellationToken cancellationToken)
         {
             try
             {
-                await _containerClient.CreateIfNotExistsAsync();
+                await _containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
 
                 var blobClient = _containerClient.GetBlobClient(fileName);
 
@@ -32,7 +34,7 @@ namespace Notsy.Helpers
                     {
                         ContentType = contentType
                     }
-                });
+                }, cancellationToken);
 
                 return $"{_endpoint}/{fileName}";
             }

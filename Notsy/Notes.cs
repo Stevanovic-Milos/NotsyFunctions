@@ -28,101 +28,101 @@ namespace Notsy
         }
 
         [Function("GetNotes")]
-        public async Task<HttpResponseData> GetNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes")] HttpRequestData req)
+        public async Task<HttpResponseData> GetNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes")] HttpRequestData req, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed get notes a request.");
             try
             {
-                var notes = await _dbContext.Notes.OrderByDescending(n => n.CreatedAt).ToListAsync();
+                var notes = await _dbContext.Notes.OrderByDescending(n => n.CreatedAt).ToListAsync(cancellationToken);
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(notes);
+                await response.WriteAsJsonAsync(notes, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while retriving notes: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occured while retriving notes: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
         [Function("GetCompletedNotes")]
-        public async Task<HttpResponseData> GetCompletedNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes/completed")] HttpRequestData req)
+        public async Task<HttpResponseData> GetCompletedNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes/completed")] HttpRequestData req, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed get notes a request.");
             try
             {
-                var notes = await _dbContext.Notes.Select(n => n).Where(n => n.Completed == true).OrderByDescending(n => n.CreatedAt).ToListAsync();
+                var notes = await _dbContext.Notes.Select(n => n).Where(n => n.Completed == true).OrderByDescending(n => n.CreatedAt).ToListAsync(cancellationToken);
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(notes);
+                await response.WriteAsJsonAsync(notes, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while retriving completed notes: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occured while retriving completed notes: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("GetToDoNotes")]
-        public async Task<HttpResponseData> GetToDoNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes/todo")] HttpRequestData req)
+        public async Task<HttpResponseData> GetToDoNotes([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "notes/todo")] HttpRequestData req, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed get notes a request.");
             try
             {
-                var notes = await _dbContext.Notes.Select(n => n).Where(n => n.Completed == false).OrderByDescending(n => n.CreatedAt).ToListAsync();
+                var notes = await _dbContext.Notes.Select(n => n).Where(n => n.Completed == false).OrderByDescending(n => n.CreatedAt).ToListAsync(cancellationToken);
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(notes);
+                await response.WriteAsJsonAsync(notes, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while retriving todo notes: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occured while retriving todo notes: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
 
-        [Function("GetNoteById")]
-        public async Task<HttpResponseData> GetNoteById([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "note/{id:guid}")] HttpRequestData req, Guid id)
-        {
-            try
+            [Function("GetNoteById")]
+            public async Task<HttpResponseData> GetNoteById([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "note/{id:guid}")] HttpRequestData req, Guid id, CancellationToken cancellationToken)
             {
-                var note = await _dbContext.Notes.FindAsync(id);
-
-                if (note == null)
+                try
                 {
-                    var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
-                    return notFound;
-                }
+                    var note = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
-                var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(note);
-                return response;
+                    if (note == null)
+                    {
+                        var notFound = req.CreateResponse(HttpStatusCode.NotFound);
+                        await notFound.WriteStringAsync("Note not found",cancellationToken);
+                        return notFound;
+                    }
+
+                    var response = req.CreateResponse(HttpStatusCode.OK);
+                    await response.WriteAsJsonAsync(note, cancellationToken);
+                    return response;
+                }
+                catch (Exception ex)
+                {
+                    var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                    await errorResponse.WriteAsJsonAsync($"An error occured while retrieving note: {ex.Message}", cancellationToken);
+                    return errorResponse;
+                }
             }
-            catch (Exception ex)
-            {
-                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while retrieving note: {ex.Message}");
-                return errorResponse;
-            }
-        }
 
         [Function("NewNote")]
-        public async Task<HttpResponseData> WriteNote([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/create")] HttpRequestData req)
+        public async Task<HttpResponseData> WriteNote([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/create")] HttpRequestData req, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed post note a request.");
             try
             {
                 // extracting note
-                var note = await req.ReadFromJsonAsync<Note>();
+                var note = await req.ReadFromJsonAsync<Note>(cancellationToken);
 
                 if (note == null)
                 {
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync("Invalid body");
+                    await bad.WriteStringAsync("Invalid body", cancellationToken);
                     return bad;
                 }
 
@@ -133,40 +133,40 @@ namespace Notsy
 
                 // saving note using EF
                 _dbContext.Notes.Add(note);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(note);
+                await response.WriteAsJsonAsync(note, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while writing note: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occured while writing note: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("UpdateNote")]
-        public async Task<HttpResponseData> UpdateNote([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/update/{id:guid}")] HttpRequestData req, Guid id)
+        public async Task<HttpResponseData> UpdateNote([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/update/{id:guid}")] HttpRequestData req, Guid id, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed update note request.");
             try
             {
-                var updatedNote = await req.ReadFromJsonAsync<Note>();
+                var updatedNote = await req.ReadFromJsonAsync<Note>(cancellationToken);
 
                 if (updatedNote == null)
                 {
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync("Invalid body");
+                    await bad.WriteStringAsync("Invalid body",cancellationToken);
                     return bad;
                 }
 
-                var existingNote = await _dbContext.Notes.FindAsync(id);
+                var existingNote = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
                 if (existingNote == null)
                 {
                     var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
+                    await notFound.WriteStringAsync("Note not found", cancellationToken);
                     return notFound;
                 }
 
@@ -176,69 +176,69 @@ namespace Notsy
                 existingNote.Completed = updatedNote.Completed;
                 existingNote.ImageUrl = updatedNote.ImageUrl;
 
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(existingNote);
+                await response.WriteAsJsonAsync(existingNote, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occurred while updating note: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occurred while updating note: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("CompleteNote")]
-        public async Task<HttpResponseData> CompleteNote([HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "note/complete/{id:guid}")] HttpRequestData req, Guid id)
+        public async Task<HttpResponseData> CompleteNote([HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "note/complete/{id:guid}")] HttpRequestData req, Guid id, CancellationToken cancellationToken)
         {
             _logger.LogInformation("HTTP trigger function processed update note request.");
             try
             {
-                var updatedNote = await req.ReadFromJsonAsync<Note>();
+                var updatedNote = await req.ReadFromJsonAsync<Note>(cancellationToken);
 
                 if (updatedNote == null)
                 {
                     var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await bad.WriteStringAsync("Invalid body");
+                    await bad.WriteStringAsync("Invalid body", cancellationToken);
                     return bad;
                 }
 
-                var existingNote = await _dbContext.Notes.FindAsync(id);
+                var existingNote = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
                 if (existingNote == null)
                 {
                     var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
+                    await notFound.WriteStringAsync("Note not found", cancellationToken);
                     return notFound;
                 }
 
                 existingNote.Completed = updatedNote.Completed;
 
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(existingNote);
+                await response.WriteAsJsonAsync(existingNote, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occurred while completing note: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occurred while completing note: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("UploadNoteImage")]
-        public async Task<HttpResponseData> UploadNoteImage([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/{id:guid}/image")] HttpRequestData req,Guid id)
+        public async Task<HttpResponseData> UploadNoteImage([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "note/{id:guid}/image")] HttpRequestData req,Guid id, CancellationToken cancellationToken)
         {
             try
             {
-                var note = await _dbContext.Notes.FindAsync(id);
+                var note = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
                 if (note == null)
                 {
                     var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
+                    await notFound.WriteStringAsync("Note not found", cancellationToken);
                     return notFound;
                 }
 
@@ -249,7 +249,7 @@ namespace Notsy
                 if (memoryStream.Length == 0)
                 {
                     var badRequest = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await badRequest.WriteStringAsync("No image provided");
+                    await badRequest.WriteStringAsync("No image provided", cancellationToken);
                     return badRequest;
                 }
 
@@ -259,85 +259,85 @@ namespace Notsy
                 var fileName = $"{id}_{Guid.NewGuid()}{fileExtension}";
 
                 // Upload to BLOB storage
-                var imageUrl = await _blobStorageHelper.UploadAsync(memoryStream, fileName, contentType!);
+                var imageUrl = await _blobStorageHelper.UploadAsync(memoryStream, fileName, contentType!, cancellationToken);
 
                 note.ImageUrl = imageUrl;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(note);
+                await response.WriteAsJsonAsync(note, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"Error uploading image: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"Error uploading image: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("DeleteNoteImage")]
-        public async Task<HttpResponseData> DeleteNoteImage([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "note/{id:guid}/image")] HttpRequestData req,Guid id)
+        public async Task<HttpResponseData> DeleteNoteImage([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "note/{id:guid}/image")] HttpRequestData req,Guid id, CancellationToken cancellationToken)
         {
             try
             {
-                var note = await _dbContext.Notes.FindAsync(id);
+                var note = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
                 if (note == null)
                 {
                     var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
+                    await notFound.WriteStringAsync("Note not found", cancellationToken);
                     return notFound;
                 }
 
                 if (string.IsNullOrEmpty(note.ImageUrl))
                 {
                     var badRequest = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await badRequest.WriteStringAsync("Note does not have an image");
+                    await badRequest.WriteStringAsync("Note does not have an image", cancellationToken);
                     return badRequest;
                 }
 
                 // Remove image URL from note
                 note.ImageUrl = null;
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(note);
+                await response.WriteAsJsonAsync(note, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occurred while deleting image: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occurred while deleting image: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
 
         [Function("DeleteNote")]
-        public async Task<HttpResponseData> DeleteNote([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "note/delete/{id:guid}")] HttpRequestData req, Guid id)
+        public async Task<HttpResponseData> DeleteNote([HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "note/delete/{id:guid}")] HttpRequestData req, Guid id, CancellationToken cancellationToken)
         {
             try
             {
-                var note = await _dbContext.Notes.FindAsync(id);
+                var note = await _dbContext.Notes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
                 if (note == null)
                 {
                     var notFound = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFound.WriteStringAsync("Note not found");
+                    await notFound.WriteStringAsync("Note not found", cancellationToken);
                     return notFound;
                 }
 
                 _dbContext.Notes.Remove(note);
-                await _dbContext.SaveChangesAsync();
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(note);
+                await response.WriteAsJsonAsync(note, cancellationToken);
                 return response;
             }
             catch (Exception ex)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteAsJsonAsync($"An error occured while deleting note: {ex.Message}");
+                await errorResponse.WriteAsJsonAsync($"An error occured while deleting note: {ex.Message}", cancellationToken);
                 return errorResponse;
             }
         }
